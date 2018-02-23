@@ -203,11 +203,11 @@ public:
       if (!testing) {
         if (mosq && !bad) {
           int ret = mosquitto_publish (mosq, NULL, MQTT_TOPIC, strlen(mesg) - 1, mesg, 0, true);
-          mosquitto_loop(mosq, -1, 1);
+          mosquitto_loop_forever(mosq, -1, 1);
           if ( ret != MOSQ_ERR_SUCCESS) {
             mosquitto_reconnect(mosq);
             ret = mosquitto_publish (mosq, NULL, MQTT_TOPIC, strlen(mesg) - 1, mesg, 0, true);
-            mosquitto_loop(mosq, -1, 1);
+            mosquitto_loop_forever(mosq, -1, 1);
             if (ret != MOSQ_ERR_SUCCESS) {
               fprintf(stderr, "Can't publish to Mosquitto server\n");
               // Tear down the connecton and exit.
