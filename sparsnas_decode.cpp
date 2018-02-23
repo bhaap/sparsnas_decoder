@@ -209,7 +209,7 @@ public:
             ret = mosquitto_publish (mosq, NULL, MQTT_TOPIC, strlen(mesg) - 1, mesg, 0, true);
             mosquitto_loop_forever(mosq, -1, 1);
             if (ret != MOSQ_ERR_SUCCESS) {
-              fprintf(stderr, "Can't publish to Mosquitto server\n");
+              fprintf(stderr, "Can't publish to Mosquitto server %d\n", ret );
               // Tear down the connecton and exit.
               mosquitto_disconnect (mosq);
               mosquitto_destroy (mosq);
