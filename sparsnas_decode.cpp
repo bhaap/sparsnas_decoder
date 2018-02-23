@@ -201,28 +201,21 @@ public:
 
       m += sprintf(m, ",\"Sensor\":%6d}\n", SENSOR_ID);
       if (!testing) {
-        // Create a new Mosquitto runtime instance with a random client ID,
-        mosq = mosquitto_new (NULL, true, NULL);
-
-        if (mosq) {
-          //Set username and password (will be ignored of MQTT_USERNAME=NULL)
-          mosquitto_username_pw_set (mosq, MQTT_USERNAME, MQTT_PASSWORD);
-          int ret = mosquitto_connect (mosq, MQTT_HOSTNAME, MQTT_PORT, 30);
-          if (ret) {
-            fprintf (stderr, "Can't connect to Mosquitto server\n");
-            mosq = NULL;
-          }
-        } else
-            fprintf (stderr, "Can't initialize Mosquitto library\n");
         if (mosq && !bad) {
-          int ret = mosquitto_publish (mosq, NULL, MQTT_TOPIC, strlen(mesg) + 1, mesg, 0, true);
-          if (ret) {
-            fprintf(stderr, "Can't publish to Mosquitto server\n");
-            // Tear down the connecton and exit.
-            mosquitto_disconnect (mosq);
-            mosquitto_destroy (mosq);
-            mosquitto_lib_cleanup();
-            exit(-1);
+          int ret = mosquitto_publish (mosq, NULL, MQTT_TOPIC, strlen(mesg) - 1, mesg, 0, true);
+          mosquitto_loop(mosq, -1, 1);
+          if ( ret != MOSQ_ERR_SUCCESS) {
+            mosquitto_reconnect(mosq);
+            ret = mosquitto_publish (mosq, NULL, MQTT_TOPIC, strlen(mesg) - 1, mesg, 0, true);
+            mosquitto_loop(mosq, -1, 1);
+            if (ret != MOSQ_ERR_SUCCESS) {
+              fprintf(stderr, "Can't publish to Mosquitto server\n");
+              // Tear down the connecton and exit.
+              mosquitto_disconnect (mosq);
+              mosquitto_destroy (mosq);
+              mosquitto_lib_cleanup();
+              exit(-1);
+            }
           }
         } else
           bad ? fprintf(stderr, "%s", mesg) : printf("%s", mesg);
@@ -463,6 +456,20 @@ int main(int argc, char **argv)
 
     // Initialize the Mosquitto library
     mosquitto_lib_init();
+
+    // Create a new Mosquitto runtime instance with a random client ID,
+    mosq = mosquitto_new (NULL, true, NULL);
+
+    if (mosq) {
+      //Set username and password (will be ignored of MQTT_USERNAME=NULL)
+      mosquitto_username_pw_set (mosq, MQTT_USERNAME, MQTT_PASSWORD);
+      int ret = mosquitto_connect (mosq, MQTT_HOSTNAME, MQTT_PORT, 30);
+      if (ret) {
+        fprintf (stderr, "Can't connect to Mosquitto server\n");
+        mosq = NULL;
+      }
+    } else
+        fprintf (stderr, "Can't initialize Mosquitto library\n");
 
     //Run the main program
     run_for_frequencies(f, logfile, frequencies[0], frequencies[1]);
