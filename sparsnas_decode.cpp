@@ -202,12 +202,12 @@ public:
       m += sprintf(m, ",\"Sensor\":%6d}\n", SENSOR_ID);
       if (!testing) {
         if (mosq && !bad) {
-          mosquitto_publish (mosq, NULL, MQTT_TOPIC, strlen(mesg) - 1, mesg, 0, true);
-          int ret = mosquitto_loop_forever(mosq, -1, 1);
+          int ret = mosquitto_publish (mosq, NULL, MQTT_TOPIC, strlen(mesg) - 1, mesg, 0, true);
+          mosquitto_loop(mosq, -1, 1);
           if ( ret != MOSQ_ERR_SUCCESS) {
             mosquitto_reconnect(mosq);
-            mosquitto_publish (mosq, NULL, MQTT_TOPIC, strlen(mesg) - 1, mesg, 0, true);
-            ret = mosquitto_loop_forever(mosq, -1, 1);
+            ret = mosquitto_publish (mosq, NULL, MQTT_TOPIC, strlen(mesg) - 1, mesg, 0, true);
+            mosquitto_loop(mosq, -1, 1);
             if (ret != MOSQ_ERR_SUCCESS) {
               fprintf(stderr, "Can't publish to Mosquitto server %d %s\n", ret, mosquitto_strerror(ret) );
               // Tear down the connecton and exit.
