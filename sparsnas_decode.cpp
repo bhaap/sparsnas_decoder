@@ -178,7 +178,7 @@ public:
         for (int i = 0; i < 18; i++)
           m += sprintf(m, "%.2X ", data_[i]);
         m += sprintf(m, "\"");
-      } else {
+      } else if (crc == packet_crc) {
         bad = false;
         int seq = (dec[9] << 8 | dec[10]);
         int effect = (dec[11] << 8 | dec[12]);
@@ -195,19 +195,17 @@ public:
           error_sum += fabs(freq);
           error_sum_count += 1;
         }
+      } else {
+      m += sprintf(m, "{\"CRC\": \"ERR\"");
       }
-
-      m += sprintf(m, (crc == packet_crc) ? ",\"CRC\":\"ok\"" : ",\"CRC\": \"ERR\"");
 
       m += sprintf(m, ",\"Sensor\":%6d}\n", SENSOR_ID);
       if (!testing) {
-        if (mosq && !bad) {
+        if (mosq && !bad && crc == packet_crc) {
           int ret = mosquitto_publish (mosq, NULL, MQTT_TOPIC, strlen(mesg) - 1, mesg, 0, true);
-          mosquitto_loop(mosq, -1, 1);
           if ( ret != MOSQ_ERR_SUCCESS) {
             mosquitto_reconnect(mosq);
             ret = mosquitto_publish (mosq, NULL, MQTT_TOPIC, strlen(mesg) - 1, mesg, 0, true);
-            mosquitto_loop(mosq, -1, 1);
             if (ret != MOSQ_ERR_SUCCESS) {
               fprintf(stderr, "Can't publish to Mosquitto server %d %s\n", ret, mosquitto_strerror(ret) );
               // Tear down the connecton and exit.
@@ -217,8 +215,10 @@ public:
               exit(-1);
             }
           }
-        } else
-          bad ? fprintf(stderr, "%s", mesg) : printf("%s", mesg);
+        } else if (mosq && !bad && crc != packet_crc) {
+          int ret = mosquitto_publish (mosq, NULL, MQTT_TOPIC + "/crc", strlen(mesg) - 1, mesg, 0, true);
+        } else        
+        bad ? fprintf(stderr, "%s", mesg) : printf("%s", mesg);
         if (outfile) {
           fprintf(outfile, "%s", mesg);
           fflush(outfile);
@@ -459,6 +459,7 @@ int main(int argc, char **argv)
 
     // Create a new Mosquitto runtime instance with a random client ID,
     mosq = mosquitto_new (NULL, true, NULL);
+    mosquitto_loop_start(mosq);
 
     if (mosq) {
       //Set username and password (will be ignored of MQTT_USERNAME=NULL)
