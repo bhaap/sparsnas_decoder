@@ -196,7 +196,7 @@ public:
           error_sum_count += 1;
         }
       } else {
-      m += sprintf(m, "{\"CRC\": \"ERR\"");
+        m += sprintf(m, "{\"CRC\": \"ERR\"");
       }
 
       m += sprintf(m, ",\"Sensor\":%6d}\n", SENSOR_ID);
@@ -218,9 +218,9 @@ public:
           }
         } else
           bad ? fprintf(stderr, "%s", mesg) : printf("%s", mesg);
-          if (outfile) {
-            fprintf(outfile, "%s", mesg);
-            fflush(outfile);
+        if (outfile) {
+          fprintf(outfile, "%s", mesg);
+          fflush(outfile);
         }
       }
     }
