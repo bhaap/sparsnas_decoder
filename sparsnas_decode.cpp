@@ -446,12 +446,8 @@ int main(int argc, char **argv)
       strncpy(MQTT_TOPIC, env_p, sizeof(MQTT_TOPIC)-1);
     else
       sprintf(MQTT_TOPIC, "sparsnas/%d", SENSOR_ID);
-
-    memset(MQTT_CRC_TOPIC, '\0', sizeof(MQTT_CRC_TOPIC));
-    if (const char *env_p = std::getenv("MQTT_CRC_TOPIC"))
-      strncpy(MQTT_CRC_TOPIC, env_p, sizeof(MQTT_CRC_TOPIC)-1);
-    else
-      sprintf(MQTT_CRC_TOPIC, "sparsnas/%d/crc", SENSOR_ID);
+      
+    sprintf(MQTT_CRC_TOPIC, "%s/crc", MQTT_TOPIC);
 
     memset(MQTT_USERNAME, '\0', sizeof(MQTT_USERNAME));
     if (const char *env_p = std::getenv("MQTT_USERNAME"))
