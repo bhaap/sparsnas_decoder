@@ -32,6 +32,7 @@ uint32_t MQTT_PORT = 1883;
 char MQTT_USERNAME[64];
 char MQTT_PASSWORD[64];
 char MQTT_TOPIC[64];
+char MQTT_CRC_TOPIC[64];
 
 
 FILE *outfile;
@@ -216,8 +217,8 @@ public:
             }
           }
         } else if (mosq && !bad && crc != packet_crc) {
-          int ret = mosquitto_publish (mosq, NULL, MQTT_TOPIC + "/crc", strlen(mesg) - 1, mesg, 0, true);
-        } else        
+          mosquitto_publish (mosq, NULL, MQTT_CRC_TOPIC, strlen(mesg) - 1, mesg, 0, true);
+        } else
         bad ? fprintf(stderr, "%s", mesg) : printf("%s", mesg);
         if (outfile) {
           fprintf(outfile, "%s", mesg);
