@@ -181,7 +181,7 @@ public:
       } else if (crc == packet_crc) {
         bad = false;
         int seq = (dec[9] << 8 | dec[10]);
-        int effect = (dec[11] << 8 | dec[12]);
+        unsigned int effect = (dec[11] << 8 | dec[12]);
         int pulse = (dec[13] << 24 | dec[14] << 16 | dec[15] << 8 | dec[16]);
         int battery = dec[17];
         float watt = effect * 24;
@@ -202,7 +202,7 @@ public:
       m += sprintf(m, ",\"Sensor\":%6d}\n", SENSOR_ID);
       char* topic = (crc == packet_crc) ? MQTT_TOPIC : MQTT_CRC_TOPIC;
       if (!testing) {
-        if (mosq && !bad && crc == packet_crc) {
+        if (mosq && !bad) {
           int ret = mosquitto_publish (mosq, NULL, topic, strlen(mesg) - 1, mesg, 0, true);
           if ( ret != MOSQ_ERR_SUCCESS) {
             mosquitto_reconnect(mosq);
