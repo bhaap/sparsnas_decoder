@@ -34,7 +34,6 @@ char MQTT_PASSWORD[64];
 char MQTT_TOPIC[64];
 char MQTT_CRC_TOPIC[64];
 
-
 FILE *outfile;
 int testing=0;
 
@@ -201,12 +200,13 @@ public:
       }
 
       m += sprintf(m, ",\"Sensor\":%6d}\n", SENSOR_ID);
+      char* topic = (crc == packet_crc) ? MQTT_TOPIC : MQTT_CRC_TOPIC;
       if (!testing) {
         if (mosq && !bad && crc == packet_crc) {
-          int ret = mosquitto_publish (mosq, NULL, MQTT_TOPIC, strlen(mesg) - 1, mesg, 0, true);
+          int ret = mosquitto_publish (mosq, NULL, topic, strlen(mesg) - 1, mesg, 0, true);
           if ( ret != MOSQ_ERR_SUCCESS) {
             mosquitto_reconnect(mosq);
-            ret = mosquitto_publish (mosq, NULL, MQTT_TOPIC, strlen(mesg) - 1, mesg, 0, true);
+            ret = mosquitto_publish (mosq, NULL, topic, strlen(mesg) - 1, mesg, 0, true);
             if (ret != MOSQ_ERR_SUCCESS) {
               fprintf(stderr, "Can't publish to Mosquitto server %d %s\n", ret, mosquitto_strerror(ret) );
               // Tear down the connecton and exit.
@@ -216,13 +216,11 @@ public:
               exit(-1);
             }
           }
-        } else if (mosq && !bad && crc != packet_crc) {
-          mosquitto_publish (mosq, NULL, MQTT_CRC_TOPIC, strlen(mesg) - 1, mesg, 0, true);
         } else
-        bad ? fprintf(stderr, "%s", mesg) : printf("%s", mesg);
-        if (outfile) {
-          fprintf(outfile, "%s", mesg);
-          fflush(outfile);
+          bad ? fprintf(stderr, "%s", mesg) : printf("%s", mesg);
+          if (outfile) {
+            fprintf(outfile, "%s", mesg);
+            fflush(outfile);
         }
       }
     }
@@ -446,7 +444,7 @@ int main(int argc, char **argv)
       strncpy(MQTT_TOPIC, env_p, sizeof(MQTT_TOPIC)-1);
     else
       sprintf(MQTT_TOPIC, "sparsnas/%d", SENSOR_ID);
-      
+
     sprintf(MQTT_CRC_TOPIC, "%s/crc", MQTT_TOPIC);
 
     memset(MQTT_USERNAME, '\0', sizeof(MQTT_USERNAME));
