@@ -188,9 +188,9 @@ public:
         int data4 = data_[4]^0x0f;
 //      Note that data_[4] cycles between 0-3 when you first put in the batterys in t$
         if(data4 == 1){
-          watt = (float)((3600000 / PULSES_PER_KWH) * 1024) / (effect);
+          watt = (double)((3600000 / PULSES_PER_KWH) * 1024) / (effect);
         }
-        m += sprintf(m, "{\"Sequence\": %5d,\"Watt\": %7.2f,\"kWh\": %d.%.3d,\"battery\": %d,\"FreqErr\": %.2f", seq, watt, pulse/PULSES_PER_KWH, pulse%PULSES_PER_KWH, battery, freq);
+        m += sprintf(m, "{\"Sequence\": %5d,\"Watt\": %7.2f,\"kWh\": %d.%.3d,\"battery\": %d,\"FreqErr\": %.2f,\"Effect\": %d", seq, watt, pulse/PULSES_PER_KWH, pulse%PULSES_PER_KWH, battery, freq, effect);
         if (testing && crc == packet_crc) {
           error_sum += fabs(freq);
           error_sum_count += 1;
