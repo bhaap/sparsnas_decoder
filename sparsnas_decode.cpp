@@ -2,6 +2,7 @@
 #include <cstdio>
 #include <cmath>
 #include <complex>
+#include <time.h>
 #include <cstring>
 #include <mosquitto.h>
 
@@ -111,6 +112,30 @@ uint16_t crc16(const uint8_t *data, size_t n) {
 float error_sum;
 int error_sum_count;
 
+class ComputeWatt {
+private:
+  float myPulses;
+  time_t myTime;
+
+public:
+  ComputeWatt() {
+    myPulses = 0;
+    myTime = time(NULL);
+  }
+
+  float update(uint32_t pulses, uint32_t effect) {
+    double timeDiff = difftime(time(NULL), myTime) * 3600; // difftime returns seconds
+    float watt = ((3600000.0 / PULSES_PER_KWH) * 1024) / (effect);
+    myTime = time(NULL);
+
+    if (watt > 25000 && myPulses != 0)
+      // W = 1000 × kWh / h
+      watt = 1000 * ((pulses - myPulses) / PULSES_PER_KWH) / timeDiff;
+    myPulses = pulses;
+    return watt;
+  }
+};
+ComputeWatt* myComputeWatt;
 
 class SignalDetector {
 
@@ -188,9 +213,13 @@ public:
         int data4 = data_[4]^0x0f;
 //      Note that data_[4] cycles between 0-3 when you first put in the batterys in t$
         if(data4 == 1){
-          watt = (double)((3600000 / PULSES_PER_KWH) * 1024) / (effect);
+          watt = myComputeWatt->update(pulse, effect);
         }
-        m += sprintf(m, "{\"Sequence\": %5d,\"Watt\": %7.2f,\"kWh\": %d.%.3d,\"battery\": %d,\"FreqErr\": %.2f,\"Effect\": %d", seq, watt, pulse/PULSES_PER_KWH, pulse%PULSES_PER_KWH, battery, freq, effect);
+        if (watt < 30000) {
+          m += sprintf(m, "{\"Sequence\": %5d,\"Watt\": %7.2f,\"kWh\": %d.%.3d,\"battery\": %d,\"FreqErr\": %.2f,\"Effect\": %d", seq, watt, pulse/PULSES_PER_KWH, pulse%PULSES_PER_KWH, battery, freq, effect);
+        } else {
+          m += sprintf(m, "{\"Sequence\": %5d,\"kWh\": %d.%.3d,\"battery\": %d,\"FreqErr\": %.2f", seq, pulse/PULSES_PER_KWH, pulse%PULSES_PER_KWH, battery, freq);
+        }
         if (testing && crc == packet_crc) {
           error_sum += fabs(freq);
           error_sum_count += 1;
@@ -385,6 +414,7 @@ int main(int argc, char **argv)
 {
     int tmp;
     FILE *f = stdin;
+    myComputeWatt = new ComputeWatt();
     if (argc >= 2) {
         f = fopen(argv[1], "rb");
         if (!f) {
