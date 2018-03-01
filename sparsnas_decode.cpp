@@ -215,8 +215,8 @@ public:
         if(data4 == 1){
           watt = myComputeWatt->update(pulse, effect);
         }
-        if (watt < 30000) {
-          m += sprintf(m, "{\"Sequence\": %5d,\"Watt\": %7.2f,\"kWh\": %d.%.3d,\"battery\": %d,\"FreqErr\": %.2f,\"Effect\": %d", seq, watt, pulse/PULSES_PER_KWH, pulse%PULSES_PER_KWH, battery, freq, effect);
+        if (watt > 1) {
+          m += sprintf(m, "{\"Sequence\": %5d,\"Watt\": %7.2f,\"kWh\": %d.%.3d,\"battery\": %d,\"FreqErr\": %.2f,\"Effect\": %d,\"data4\": %d", seq, watt, pulse/PULSES_PER_KWH, pulse%PULSES_PER_KWH, battery, freq, effect, data4);
         } else {
           m += sprintf(m, "{\"Sequence\": %5d,\"kWh\": %d.%.3d,\"battery\": %d,\"FreqErr\": %.2f", seq, pulse/PULSES_PER_KWH, pulse%PULSES_PER_KWH, battery, freq);
         }
