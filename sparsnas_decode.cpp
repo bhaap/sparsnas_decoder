@@ -112,38 +112,35 @@ uint16_t crc16(const uint8_t *data, size_t n) {
 float error_sum;
 int error_sum_count;
 
-class ComputeWatt {
-private:
-  float myPulses;
-  time_t myTime;
-
-public:
-  ComputeWatt() {
-    myPulses = 0;
-    myTime = time(NULL);
-  }
-
-  float update(uint32_t pulses, uint32_t effect) {
-    double timeDiff = difftime(time(NULL), myTime) * 3600; // difftime returns seconds
-    float watt = ((3600000.0 / PULSES_PER_KWH) * 1024) / (effect);
-    myTime = time(NULL);
-
-    if (watt > 25000 && myPulses != 0)
-      // W = 1000 × kWh / h
-      watt = 1000 * ((pulses - myPulses) / PULSES_PER_KWH) / timeDiff;
-    myPulses = pulses;
-    return watt;
-  }
-};
-ComputeWatt* myComputeWatt;
 
 class SignalDetector {
+
+private:
+  float pulses_;
+  time_t pulseTime_;
+
+  float calculateWatt(uint32_t pulses, uint16_t effect) {
+    double timeDiff = difftime(time(NULL), pulseTime_) * 3600; // difftime returns seconds
+    float watt = ((3600000.0 / PULSES_PER_KWH) * 1024) / (effect);
+    pulseTime_ = time(NULL);
+
+    if (watt > 25000 && pulses_ != 0) {
+      fprintf(stderr, "Recalculates Watt (%.2f) ", watt);
+      // W = 1000 × kWh / h
+      watt = 1000 * ((pulses - pulses_) / PULSES_PER_KWH) / timeDiff;
+      fprintf(stderr, "new %.2f\n", watt);
+    }
+    pulses_ = pulses;
+    return watt;
+  }
 
 public:
   SignalDetector() {
     shift_ = 0;
     found_sync_ = 0;
     bits_ = 0;
+    pulses_ = 0;
+    pulseTime_ = time(NULL);
   }
 
   void add(bool v) {
@@ -203,7 +200,7 @@ public:
         for (int i = 0; i < 18; i++)
           m += sprintf(m, "%.2X ", data_[i]);
         m += sprintf(m, "\"");
-      } else if (crc == packet_crc) {
+      } else {
         bad = false;
         int seq = (dec[9] << 8 | dec[10]);
         unsigned int effect = (dec[11] << 8 | dec[12]);
@@ -213,21 +210,18 @@ public:
         int data4 = data_[4]^0x0f;
 //      Note that data_[4] cycles between 0-3 when you first put in the batterys in t$
         if(data4 == 1){
-          watt = myComputeWatt->update(pulse, effect);
+          watt = calculateWatt(pulse, effect);
+        } else if (data4 == 0 ) {
+          watt = effect * 24 / 100000.0;
         }
-        if (watt > 1) {
-          m += sprintf(m, "{\"Sequence\": %5d,\"Watt\": %7.2f,\"kWh\": %d.%.3d,\"battery\": %d,\"FreqErr\": %.2f,\"Effect\": %d,\"data4\": %d", seq, watt, pulse/PULSES_PER_KWH, pulse%PULSES_PER_KWH, battery, freq, effect, data4);
-        } else {
-          m += sprintf(m, "{\"Sequence\": %5d,\"kWh\": %d.%.3d,\"battery\": %d,\"FreqErr\": %.2f", seq, pulse/PULSES_PER_KWH, pulse%PULSES_PER_KWH, battery, freq);
-        }
+        m += sprintf(m, "{\"Sequence\": %5d,\"Watt\": %7.2f,\"kWh\": %d.%.3d,\"battery\": %d,\"FreqErr\": %.2f,\"Effect\": %d", seq, watt, pulse/PULSES_PER_KWH, pulse%PULSES_PER_KWH, battery, freq, effect);
         if (testing && crc == packet_crc) {
           error_sum += fabs(freq);
           error_sum_count += 1;
         }
-      } else {
-        m += sprintf(m, "{\"CRC\": \"ERR\"");
       }
 
+      m += sprintf(m, ",\"Data4\": %d", data4);
       m += sprintf(m, ",\"Sensor\":%6d}\n", SENSOR_ID);
       char* topic = (crc == packet_crc) ? MQTT_TOPIC : MQTT_CRC_TOPIC;
       if (!testing) {
@@ -414,7 +408,6 @@ int main(int argc, char **argv)
 {
     int tmp;
     FILE *f = stdin;
-    myComputeWatt = new ComputeWatt();
     if (argc >= 2) {
         f = fopen(argv[1], "rb");
         if (!f) {
